@@ -127,11 +127,14 @@ precision lowp float;
 varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
+vec4 pack(vec2 fc) {
+    return vec4((fc - 0.5) / 256.0, 0.0, 1.0);
+}
 void main() {
     vec3 res = texture2D(Texture, uv).rgb * color.rgb;
     // if the red channel is over the intensity threshold then count it as a seed
     if (res.r > 0.3) {
-        gl_FragColor = vec4((gl_FragCoord.x - 0.5) / 256.0, (gl_FragCoord.y - 0.5) / 256.0, 0.0, 1.0);
+        gl_FragColor = pack(gl_FragCoord.xy);
     } else {
         gl_FragColor = vec4(1.0);
     }
@@ -143,31 +146,31 @@ precision lowp float;
 varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
+vec4 pack(vec2 fc) {
+    return vec4((fc - 0.5) / 256.0, 0.0, 1.0);
+}
+vec2 unpack(vec4 t) {
+    return vec2(round(t.r * 256.0), round(t.g * 256.0)) + 0.5;
+}
 void main() {
-    vec4 res = texture2D(Texture, uv);
     vec2 current_pos;
     float current_dist;
-    current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0)) + 0.5;
+    current_pos = unpack(texture2D(Texture, uv));
     current_dist = length(gl_FragCoord.xy - current_pos);
     int r = int(color.r * 256.0);
     vec2 size = vec2(textureSize(Texture, 0));
     for (int dx = -1; dx <= 1; dx += 1) {
         for (int dy = -1; dy <= 1; dy += 1) {
-            vec2 offs = vec2(float(dx * r), float(dy * r));
-            vec2 newFragCoord = gl_FragCoord.xy + offs;
-            vec2 newuv = clamp(newFragCoord / size, 0.0, 1.0);
-            vec4 other_res = texture2D(Texture, newuv);
-            if (other_res.a == 1.0) {
-                vec2 other_pos = vec2(round(other_res.r * 256.0), round(other_res.g * 256.0)) + 0.5;
-                float len = length(gl_FragCoord.xy - other_pos);
-                if (len < current_dist) {
-                    current_dist = len;
-                    current_pos = other_pos;
-                }
+            vec2 newFragCoord = gl_FragCoord.xy + vec2(float(dx * r), float(dy * r));
+            vec2 other_pos = unpack(texture2D(Texture, clamp(newFragCoord / size, 0.0, 1.0)));
+            float len = length(gl_FragCoord.xy - other_pos);
+            if (len < current_dist) {
+                current_dist = len;
+                current_pos = other_pos;
             }
         }
     }
-    gl_FragColor = vec4((current_pos.x - 0.5) / 256.0, (current_pos.y - 0.5) / 256.0, current_dist, 1.0);
+    gl_FragColor = pack(current_pos);
 }
 "#;
 
@@ -176,11 +179,12 @@ precision highp float;
 varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
+vec2 unpack(vec4 t) {
+    return vec2(round(t.r * 256.0), round(t.g * 256.0)) + 0.5;
+}
 void main() {
     float r = color.r * 256.0;
-    vec4 res = texture2D(Texture, uv);
-    vec2 encoded_pos = vec2(round(res.r * 256.0), round(res.g * 256.0)) + 0.5;
-    float len = length(gl_FragCoord.xy - encoded_pos);
+    float len = length(gl_FragCoord.xy - unpack(texture2D(Texture, uv)));
     if (len == 0.0) {
         gl_FragColor = vec4(1.0);
     } else if (len < r * 0.5) {
