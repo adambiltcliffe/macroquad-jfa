@@ -48,6 +48,8 @@ async fn main() {
     let step_material = load_material(VERTEX_SHADER, FS_STEP, MaterialParams::default()).unwrap();
     let final_material = load_material(VERTEX_SHADER, FS_FINAL, MaterialParams::default()).unwrap();
 
+    let mut n = 1;
+
     loop {
         set_camera(&get_camera_for_target(&rt_geom));
         gl_use_default_material();
@@ -55,7 +57,7 @@ async fn main() {
         draw_rectangle(10.0, 40.0, 50.0, 70.0, WHITE);
         draw_triangle(vec2(2.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 38.0), WHITE);
         draw_text_ex(
-            "hello world",
+            &format!("{}: hello world", n),
             50.0,
             20.0,
             TextParams {
@@ -88,7 +90,10 @@ async fn main() {
             rt_init.texture,
             0.,
             0.,
-            WHITE,
+            Color {
+                r: 16.0 / 256.0,
+                ..Color::default()
+            },
             DrawTextureParams {
                 dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
                 ..Default::default()
@@ -104,7 +109,10 @@ async fn main() {
             rt_step.texture,
             0.,
             0.,
-            WHITE,
+            Color {
+                r: 16.0 / 256.0,
+                ..Color::default()
+            },
             DrawTextureParams {
                 dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
                 ..Default::default()
@@ -125,6 +133,7 @@ async fn main() {
         );
 
         next_frame().await;
+        n += 1;
     }
 }
 
@@ -171,9 +180,10 @@ void main() {
     } else {
         current_dist = 9999.9;
     }
+    int r = int(color.r * 256.0);
     vec2 size = vec2(textureSize(Texture, 0));
-    for (int dx = -16; dx <= 16; dx += 1) {
-        for (int dy = -16; dy <= 16; dy += 1) {
+    for (int dx = -r; dx <= r; dx += 1) {
+        for (int dy = -r; dy <= r; dy += 1) {
             vec2 offs = vec2(float(dx), float(dy));
             vec2 newFragCoord = coords + offs;
             vec2 newuv = (newFragCoord + vec2(0.5, 0.5)) / size;
@@ -198,6 +208,7 @@ varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
 void main() {
+    float r = color.r * 256.0;
     vec4 res = texture2D(Texture, uv);
     // if it was a seed, the alpha will be 1.0, so draw it as white
     if (res.a == 1.0) {
@@ -206,8 +217,8 @@ void main() {
         float len = length(current_pos - encoded_pos);
         if (len == 0.0) {
             gl_FragColor = vec4(1.0);
-        } else if (len < 12.0) {
-            gl_FragColor = vec4(0.0, (12.0 - len) / 12.0, 0.0, 1.0);
+        } else if (len < r) {
+            gl_FragColor = vec4(0.0, (r - len) / r, 0.0, 1.0);
         }
     } else {
         gl_FragColor = vec4(0.0);
