@@ -100,7 +100,8 @@ async fn main() {
         render_pass(&rt_step1, &rt_step2, step_material, encode_param(4));
         render_pass(&rt_step2, &rt_step1, step_material, encode_param(2));
         render_pass(&rt_step1, &rt_step2, step_material, encode_param(1));
-        render_pass(&rt_step2, &rt_final, final_material, encode_param(32));
+        let p = 16 + (((n % 40) as f32 / 40.0 * std::f32::consts::PI).sin() * 16.0) as u32;
+        render_pass(&rt_step2, &rt_final, final_material, encode_param(p));
 
         set_camera(&get_screen_camera(RENDER_W as f32, RENDER_H as f32));
         gl_use_default_material();
@@ -158,7 +159,7 @@ void main() {
         for (int dy = -1; dy <= 1; dy += 1) {
             vec2 offs = vec2(float(dx * r), float(dy * r));
             vec2 newFragCoord = coords + offs;
-            vec2 newuv = (newFragCoord + vec2(0.5, 0.5)) / size;
+            vec2 newuv = clamp((newFragCoord + 0.5) / size, 0.0, 1.0);
             vec4 other_res = texture2D(Texture, newuv);
             if (other_res.a == 1.0) {
                 vec2 other_pos = vec2(round(other_res.r * 256.0), round(other_res.g * 256.0));
@@ -189,8 +190,10 @@ void main() {
         float len = length(current_pos - encoded_pos);
         if (len == 0.0) {
             gl_FragColor = vec4(1.0);
-        } else if (len < r || true) {
-            gl_FragColor = vec4(0.0, (r - len) / r, 0.0, 1.0);
+        } else if (len < r * 0.5) {
+            gl_FragColor = vec4(1.0, smoothstep(0.0, r * 0.5, len), 0.0, 1.0);
+        } else if (len < r) {
+            gl_FragColor = vec4(smoothstep(r, r * 0.5, len), 1.0, 0.0, 1.0);
         }
     } else {
         gl_FragColor = vec4(0.0);
