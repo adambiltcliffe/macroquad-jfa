@@ -58,11 +58,13 @@ fn encode_param(n: u32) -> Color {
 async fn main() {
     let rt_geom = render_target(RENDER_W as u32, RENDER_H as u32);
     let rt_init = render_target(RENDER_W as u32, RENDER_H as u32);
-    let rt_step = render_target(RENDER_W as u32, RENDER_H as u32);
+    let rt_step1 = render_target(RENDER_W as u32, RENDER_H as u32);
+    let rt_step2 = render_target(RENDER_W as u32, RENDER_H as u32);
     let rt_final = render_target(RENDER_W as u32, RENDER_H as u32);
     rt_geom.texture.set_filter(FilterMode::Nearest);
     rt_init.texture.set_filter(FilterMode::Nearest);
-    rt_step.texture.set_filter(FilterMode::Nearest);
+    rt_step1.texture.set_filter(FilterMode::Nearest);
+    rt_step2.texture.set_filter(FilterMode::Nearest);
     rt_final.texture.set_filter(FilterMode::Nearest);
     let init_material = load_material(VERTEX_SHADER, FS_INIT, MaterialParams::default()).unwrap();
     let step_material = load_material(VERTEX_SHADER, FS_STEP, MaterialParams::default()).unwrap();
@@ -74,7 +76,10 @@ async fn main() {
         set_camera(&get_camera_for_target(&rt_geom));
         gl_use_default_material();
         clear_background(BLACK);
-        draw_rectangle(10.0, 40.0, 50.0, 70.0, WHITE);
+        draw_rectangle(10.0, 40.0, 50.0, 20.0, WHITE);
+        draw_rectangle(100.0, 75.0, 10.0, 60.0, WHITE);
+        draw_rectangle(45.0, 75.0, 10.0, 60.0, WHITE);
+        draw_rectangle(20.0, 100.0, 60.0, 10.0, WHITE);
         draw_triangle(vec2(2.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 38.0), WHITE);
         draw_text_ex(
             &format!("{}: hello world", n),
@@ -89,8 +94,13 @@ async fn main() {
         );
 
         render_pass(&rt_geom, &rt_init, init_material, WHITE);
-        render_pass(&rt_init, &rt_step, step_material, encode_param(16));
-        render_pass(&rt_step, &rt_final, final_material, encode_param(16));
+        render_pass(&rt_init, &rt_step1, step_material, encode_param(32));
+        render_pass(&rt_step1, &rt_step2, step_material, encode_param(16));
+        render_pass(&rt_step2, &rt_step1, step_material, encode_param(8));
+        render_pass(&rt_step1, &rt_step2, step_material, encode_param(4));
+        render_pass(&rt_step2, &rt_step1, step_material, encode_param(2));
+        render_pass(&rt_step1, &rt_step2, step_material, encode_param(1));
+        render_pass(&rt_step2, &rt_final, final_material, encode_param(32));
 
         set_camera(&get_screen_camera(RENDER_W as f32, RENDER_H as f32));
         gl_use_default_material();
@@ -109,17 +119,6 @@ async fn main() {
         n += 1;
     }
 }
-
-const FRAGMENT_SHADER: &'static str = r#"#version 100
-precision lowp float;
-varying vec4 color;
-varying vec2 uv;
-uniform sampler2D Texture;
-void main() {
-    vec3 res = texture2D(Texture, uv).rgb * color.rgb;
-    gl_FragColor = vec4(res, 0.5);
-}
-"#;
 
 const FS_INIT: &'static str = r#"#version 100
 precision lowp float;
@@ -155,9 +154,9 @@ void main() {
     }
     int r = int(color.r * 256.0);
     vec2 size = vec2(textureSize(Texture, 0));
-    for (int dx = -r; dx <= r; dx += 1) {
-        for (int dy = -r; dy <= r; dy += 1) {
-            vec2 offs = vec2(float(dx), float(dy));
+    for (int dx = -1; dx <= 1; dx += 1) {
+        for (int dy = -1; dy <= 1; dy += 1) {
+            vec2 offs = vec2(float(dx * r), float(dy * r));
             vec2 newFragCoord = coords + offs;
             vec2 newuv = (newFragCoord + vec2(0.5, 0.5)) / size;
             vec4 other_res = texture2D(Texture, newuv);
@@ -176,7 +175,7 @@ void main() {
 "#;
 
 const FS_FINAL: &'static str = r#"#version 100
-precision lowp float;
+precision highp float;
 varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
@@ -190,7 +189,7 @@ void main() {
         float len = length(current_pos - encoded_pos);
         if (len == 0.0) {
             gl_FragColor = vec4(1.0);
-        } else if (len < r) {
+        } else if (len < r || true) {
             gl_FragColor = vec4(0.0, (r - len) / r, 0.0, 1.0);
         }
     } else {
