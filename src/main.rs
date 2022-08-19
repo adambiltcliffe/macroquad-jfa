@@ -1,7 +1,7 @@
 use macroquad::prelude::*;
 
-const RENDER_W: f32 = 128.0;
-const RENDER_H: f32 = 128.0;
+const RENDER_W: f32 = 512.0;
+const RENDER_H: f32 = 512.0;
 
 fn window_conf() -> Conf {
     Conf {
@@ -81,8 +81,9 @@ async fn main() {
         draw_rectangle(45.0, 75.0, 10.0, 60.0, WHITE);
         draw_rectangle(20.0, 100.0, 60.0, 10.0, WHITE);
         draw_triangle(vec2(2.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 38.0), WHITE);
+        draw_poly(384.0, 384.0, 7, 80.0, 0.0, WHITE);
         draw_text_ex(
-            &format!("{}: hello world", n),
+            &format!("{}: hello world from macroquad and the JFA", n),
             50.0,
             20.0,
             TextParams {
@@ -132,7 +133,7 @@ void main() {
     if (res.r > 0.3) {
         gl_FragColor = vec4((gl_FragCoord.x - 0.5) / 256.0, (gl_FragCoord.y - 0.5) / 256.0, 0.0, 1.0);
     } else {
-        gl_FragColor = vec4(0.0);
+        gl_FragColor = vec4(1.0);
     }
 }
 "#;
@@ -147,12 +148,8 @@ void main() {
     vec2 coords = gl_FragCoord.xy - vec2(0.5, 0.5);
     vec2 current_pos;
     float current_dist;
-    if (res.a == 1.0) {
-        current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
-        current_dist = length(coords - current_pos);
-    } else {
-        current_dist = 9999.9;
-    }
+    current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
+    current_dist = length(coords - current_pos);
     int r = int(color.r * 256.0);
     vec2 size = vec2(textureSize(Texture, 0));
     for (int dx = -1; dx <= 1; dx += 1) {
@@ -183,20 +180,15 @@ uniform sampler2D Texture;
 void main() {
     float r = color.r * 256.0;
     vec4 res = texture2D(Texture, uv);
-    // if it was a seed, the alpha will be 1.0, so draw it as white
-    if (res.a == 1.0) {
-        vec2 current_pos = gl_FragCoord.xy - vec2(0.5, 0.5);
-        vec2 encoded_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
-        float len = length(current_pos - encoded_pos);
-        if (len == 0.0) {
-            gl_FragColor = vec4(1.0);
-        } else if (len < r * 0.5) {
-            gl_FragColor = vec4(1.0, smoothstep(0.0, r * 0.5, len), 0.0, 1.0);
-        } else if (len < r) {
-            gl_FragColor = vec4(smoothstep(r, r * 0.5, len), 1.0, 0.0, 1.0);
-        }
-    } else {
-        gl_FragColor = vec4(0.0);
+    vec2 current_pos = gl_FragCoord.xy - vec2(0.5, 0.5);
+    vec2 encoded_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
+    float len = length(current_pos - encoded_pos);
+    if (len == 0.0) {
+        gl_FragColor = vec4(1.0);
+    } else if (len < r * 0.5) {
+        gl_FragColor = vec4(1.0, smoothstep(0.0, r * 0.5, len), 0.0, 1.0);
+    } else if (len < r) {
+        gl_FragColor = vec4(smoothstep(r, r * 0.5, len), 1.0, 0.0, 1.0);
     }
 }
 "#;
