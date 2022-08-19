@@ -145,22 +145,21 @@ varying vec2 uv;
 uniform sampler2D Texture;
 void main() {
     vec4 res = texture2D(Texture, uv);
-    vec2 coords = gl_FragCoord.xy - vec2(0.5, 0.5);
     vec2 current_pos;
     float current_dist;
-    current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
-    current_dist = length(coords - current_pos);
+    current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0)) + 0.5;
+    current_dist = length(gl_FragCoord.xy - current_pos);
     int r = int(color.r * 256.0);
     vec2 size = vec2(textureSize(Texture, 0));
     for (int dx = -1; dx <= 1; dx += 1) {
         for (int dy = -1; dy <= 1; dy += 1) {
             vec2 offs = vec2(float(dx * r), float(dy * r));
-            vec2 newFragCoord = coords + offs;
-            vec2 newuv = clamp((newFragCoord + 0.5) / size, 0.0, 1.0);
+            vec2 newFragCoord = gl_FragCoord.xy + offs;
+            vec2 newuv = clamp(newFragCoord / size, 0.0, 1.0);
             vec4 other_res = texture2D(Texture, newuv);
             if (other_res.a == 1.0) {
-                vec2 other_pos = vec2(round(other_res.r * 256.0), round(other_res.g * 256.0));
-                float len = length(coords - other_pos);
+                vec2 other_pos = vec2(round(other_res.r * 256.0), round(other_res.g * 256.0)) + 0.5;
+                float len = length(gl_FragCoord.xy - other_pos);
                 if (len < current_dist) {
                     current_dist = len;
                     current_pos = other_pos;
@@ -168,7 +167,7 @@ void main() {
             }
         }
     }
-    gl_FragColor = vec4(current_pos.x / 256.0, current_pos.y / 256.0, current_dist, 1.0);
+    gl_FragColor = vec4((current_pos.x - 0.5) / 256.0, (current_pos.y - 0.5) / 256.0, current_dist, 1.0);
 }
 "#;
 
@@ -180,9 +179,8 @@ uniform sampler2D Texture;
 void main() {
     float r = color.r * 256.0;
     vec4 res = texture2D(Texture, uv);
-    vec2 current_pos = gl_FragCoord.xy - vec2(0.5, 0.5);
-    vec2 encoded_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
-    float len = length(current_pos - encoded_pos);
+    vec2 encoded_pos = vec2(round(res.r * 256.0), round(res.g * 256.0)) + 0.5;
+    float len = length(gl_FragCoord.xy - encoded_pos);
     if (len == 0.0) {
         gl_FragColor = vec4(1.0);
     } else if (len < r * 0.5) {
