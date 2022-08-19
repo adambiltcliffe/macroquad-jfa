@@ -32,6 +32,28 @@ fn get_camera_for_target(target: &RenderTarget) -> Camera2D {
     }
 }
 
+fn render_pass(src: &RenderTarget, dst: &RenderTarget, material: Material, color: Color) {
+    set_camera(&get_camera_for_target(dst));
+    gl_use_material(material);
+    draw_texture_ex(
+        src.texture,
+        0.,
+        0.,
+        color,
+        DrawTextureParams {
+            dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
+            ..Default::default()
+        },
+    );
+}
+
+fn encode_param(n: u32) -> Color {
+    Color {
+        r: (n as f32) / 256.0,
+        ..Color::default()
+    }
+}
+
 #[macroquad::main(window_conf())]
 async fn main() {
     let rt_geom = render_target(RENDER_W as u32, RENDER_H as u32);
@@ -42,8 +64,6 @@ async fn main() {
     rt_init.texture.set_filter(FilterMode::Nearest);
     rt_step.texture.set_filter(FilterMode::Nearest);
     rt_final.texture.set_filter(FilterMode::Nearest);
-    let default_material =
-        load_material(VERTEX_SHADER, FRAGMENT_SHADER, MaterialParams::default()).unwrap();
     let init_material = load_material(VERTEX_SHADER, FS_INIT, MaterialParams::default()).unwrap();
     let step_material = load_material(VERTEX_SHADER, FS_STEP, MaterialParams::default()).unwrap();
     let final_material = load_material(VERTEX_SHADER, FS_FINAL, MaterialParams::default()).unwrap();
@@ -68,56 +88,9 @@ async fn main() {
             },
         );
 
-        set_camera(&get_camera_for_target(&rt_init));
-        gl_use_material(init_material);
-        draw_texture_ex(
-            rt_geom.texture,
-            0.,
-            0.,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
-                ..Default::default()
-            },
-        );
-
-        let img = rt_init.texture.get_texture_data();
-        println!("I: {}, {:?}", img.bytes.len(), &img.bytes[0..16]);
-
-        set_camera(&get_camera_for_target(&rt_step));
-        gl_use_material(step_material);
-        draw_texture_ex(
-            rt_init.texture,
-            0.,
-            0.,
-            Color {
-                r: 16.0 / 256.0,
-                ..Color::default()
-            },
-            DrawTextureParams {
-                dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
-                ..Default::default()
-            },
-        );
-
-        let img = rt_step.texture.get_texture_data();
-        println!("S: {}, {:?}", img.bytes.len(), &img.bytes[0..16]);
-
-        set_camera(&get_camera_for_target(&rt_final));
-        gl_use_material(final_material);
-        draw_texture_ex(
-            rt_step.texture,
-            0.,
-            0.,
-            Color {
-                r: 16.0 / 256.0,
-                ..Color::default()
-            },
-            DrawTextureParams {
-                dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
-                ..Default::default()
-            },
-        );
+        render_pass(&rt_geom, &rt_init, init_material, WHITE);
+        render_pass(&rt_init, &rt_step, step_material, encode_param(16));
+        render_pass(&rt_step, &rt_final, final_material, encode_param(16));
 
         set_camera(&get_screen_camera(RENDER_W as f32, RENDER_H as f32));
         gl_use_default_material();
