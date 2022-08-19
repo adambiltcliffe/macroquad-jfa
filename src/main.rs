@@ -36,13 +36,16 @@ fn get_camera_for_target(target: &RenderTarget) -> Camera2D {
 async fn main() {
     let rt_geom = render_target(RENDER_W as u32, RENDER_H as u32);
     let rt_init = render_target(RENDER_W as u32, RENDER_H as u32);
+    let rt_step = render_target(RENDER_W as u32, RENDER_H as u32);
     let rt_final = render_target(RENDER_W as u32, RENDER_H as u32);
     rt_geom.texture.set_filter(FilterMode::Nearest);
     rt_init.texture.set_filter(FilterMode::Nearest);
+    rt_step.texture.set_filter(FilterMode::Nearest);
     rt_final.texture.set_filter(FilterMode::Nearest);
     let default_material =
         load_material(VERTEX_SHADER, FRAGMENT_SHADER, MaterialParams::default()).unwrap();
     let init_material = load_material(VERTEX_SHADER, FS_INIT, MaterialParams::default()).unwrap();
+    let step_material = load_material(VERTEX_SHADER, FS_STEP, MaterialParams::default()).unwrap();
     let final_material = load_material(VERTEX_SHADER, FS_FINAL, MaterialParams::default()).unwrap();
 
     loop {
@@ -50,7 +53,7 @@ async fn main() {
         gl_use_default_material();
         clear_background(BLACK);
         draw_rectangle(10.0, 40.0, 50.0, 70.0, WHITE);
-        draw_triangle(vec2(0.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 40.0), WHITE);
+        draw_triangle(vec2(2.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 38.0), WHITE);
         draw_text_ex(
             "hello world",
             50.0,
@@ -79,8 +82,8 @@ async fn main() {
         let img = rt_init.texture.get_texture_data();
         println!("I: {}, {:?}", img.bytes.len(), &img.bytes[0..16]);
 
-        set_camera(&get_camera_for_target(&rt_final));
-        gl_use_material(final_material);
+        set_camera(&get_camera_for_target(&rt_step));
+        gl_use_material(step_material);
         draw_texture_ex(
             rt_init.texture,
             0.,
@@ -92,8 +95,21 @@ async fn main() {
             },
         );
 
-        let img = rt_final.texture.get_texture_data();
-        println!("F: {}, {:?}", img.bytes.len(), &img.bytes[0..16]);
+        let img = rt_step.texture.get_texture_data();
+        println!("S: {}, {:?}", img.bytes.len(), &img.bytes[0..16]);
+
+        set_camera(&get_camera_for_target(&rt_final));
+        gl_use_material(final_material);
+        draw_texture_ex(
+            rt_step.texture,
+            0.,
+            0.,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(RENDER_W as f32, RENDER_H as f32)),
+                ..Default::default()
+            },
+        );
 
         set_camera(&get_screen_camera(RENDER_W as f32, RENDER_H as f32));
         gl_use_default_material();
@@ -139,6 +155,43 @@ void main() {
 }
 "#;
 
+const FS_STEP: &'static str = r#"#version 100
+precision lowp float;
+varying vec4 color;
+varying vec2 uv;
+uniform sampler2D Texture;
+void main() {
+    vec4 res = texture2D(Texture, uv);
+    vec2 coords = gl_FragCoord.xy - vec2(0.5, 0.5);
+    vec2 current_pos;
+    float current_dist;
+    if (res.a == 1.0) {
+        current_pos = vec2(round(res.r * 256.0), round(res.g * 256.0));
+        current_dist = length(coords - current_pos);
+    } else {
+        current_dist = 9999.9;
+    }
+    vec2 size = vec2(textureSize(Texture, 0));
+    for (int dx = -16; dx <= 16; dx += 1) {
+        for (int dy = -16; dy <= 16; dy += 1) {
+            vec2 offs = vec2(float(dx), float(dy));
+            vec2 newFragCoord = coords + offs;
+            vec2 newuv = (newFragCoord + vec2(0.5, 0.5)) / size;
+            vec4 other_res = texture2D(Texture, newuv);
+            if (other_res.a == 1.0) {
+                vec2 other_pos = vec2(round(other_res.r * 256.0), round(other_res.g * 256.0));
+                float len = length(coords - other_pos);
+                if (len < current_dist) {
+                    current_dist = len;
+                    current_pos = other_pos;
+                }
+            }
+        }
+    }
+    gl_FragColor = vec4(current_pos.x / 256.0, current_pos.y / 256.0, current_dist, 1.0);
+}
+"#;
+
 const FS_FINAL: &'static str = r#"#version 100
 precision lowp float;
 varying vec4 color;
@@ -153,8 +206,8 @@ void main() {
         float len = length(current_pos - encoded_pos);
         if (len == 0.0) {
             gl_FragColor = vec4(1.0);
-        } else {
-            gl_FragColor = vec4((res.r - (gl_FragCoord.x - 0.5) / 256.0) * 1024., uv.x, res.r * 64.0, 1.0);
+        } else if (len < 12.0) {
+            gl_FragColor = vec4(0.0, (12.0 - len) / 12.0, 0.0, 1.0);
         }
     } else {
         gl_FragColor = vec4(0.0);
