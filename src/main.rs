@@ -1,6 +1,6 @@
 use macroquad::prelude::*;
 
-const RENDER_W: f32 = 512.0;
+const RENDER_W: f32 = 768.0;
 const RENDER_H: f32 = 512.0;
 
 fn window_conf() -> Conf {
@@ -80,14 +80,24 @@ async fn main() {
         draw_rectangle(100.0, 75.0, 10.0, 60.0, WHITE);
         draw_rectangle(45.0, 75.0, 10.0, 60.0, WHITE);
         draw_rectangle(20.0, 100.0, 60.0, 10.0, WHITE);
-        draw_triangle(vec2(2.0, 0.0), vec2(40.0, 0.0), vec2(40.0, 38.0), WHITE);
         draw_poly(384.0, 384.0, 7, 80.0, 0.0, WHITE);
         draw_text_ex(
-            &format!("{}: hello world from macroquad and the JFA", n),
-            50.0,
-            20.0,
+            &format!("{} frames rendered", n),
+            8.0,
+            8.0,
             TextParams {
                 font_size: 18,
+                font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
+                font_scale_aspect: -1.0,
+                ..Default::default()
+            },
+        );
+        draw_text_ex(
+            "macroquad",
+            150.0,
+            220.0,
+            TextParams {
+                font_size: 120,
                 font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
                 font_scale_aspect: -1.0,
                 ..Default::default()
@@ -128,7 +138,9 @@ varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
 vec4 pack(vec2 fc) {
-    return vec4((fc - 0.5) / 256.0, 0.0, 1.0);
+    vec2 quot;
+    vec2 frac = modf(floor(fc) / 128.0, quot);
+    return vec4(frac, quot / 128.0);
 }
 void main() {
     vec3 res = texture2D(Texture, uv).rgb * color.rgb;
@@ -147,10 +159,12 @@ varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
 vec4 pack(vec2 fc) {
-    return vec4((fc - 0.5) / 256.0, 0.0, 1.0);
+    vec2 quot;
+    vec2 frac = modf(floor(fc) / 128.0, quot);
+    return vec4(frac, quot / 128.0);
 }
 vec2 unpack(vec4 t) {
-    return vec2(round(t.r * 256.0), round(t.g * 256.0)) + 0.5;
+    return vec2(round(t.r * 128.0 + round(t.b * 128.0) * 128.0), round(t.g * 128.0 + round(t.a * 128.0) * 128.0)) + 0.5;
 }
 void main() {
     vec2 current_pos;
@@ -180,7 +194,7 @@ varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
 vec2 unpack(vec4 t) {
-    return vec2(round(t.r * 256.0), round(t.g * 256.0)) + 0.5;
+    return vec2(round(t.r * 128.0 + round(t.b * 128.0) * 128.0), round(t.g * 128.0 + round(t.a * 128.0) * 128.0)) + 0.5;
 }
 void main() {
     float r = color.r * 256.0;
