@@ -76,33 +76,7 @@ async fn main() {
         set_camera(&get_camera_for_target(&rt_geom));
         gl_use_default_material();
         clear_background(BLACK);
-        draw_rectangle(10.0, 40.0, 50.0, 20.0, WHITE);
-        draw_rectangle(100.0, 75.0, 10.0, 60.0, WHITE);
-        draw_rectangle(45.0, 75.0, 10.0, 60.0, WHITE);
-        draw_rectangle(20.0, 100.0, 60.0, 10.0, WHITE);
-        draw_poly(384.0, 384.0, 7, 80.0, 0.0, WHITE);
-        draw_text_ex(
-            &format!("{} frames rendered", n),
-            8.0,
-            8.0,
-            TextParams {
-                font_size: 18,
-                font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
-                font_scale_aspect: -1.0,
-                ..Default::default()
-            },
-        );
-        draw_text_ex(
-            "macroquad",
-            150.0,
-            220.0,
-            TextParams {
-                font_size: 120,
-                font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
-                font_scale_aspect: -1.0,
-                ..Default::default()
-            },
-        );
+        draw_scene(n);
 
         render_pass(&rt_geom, &rt_init, init_material, WHITE);
         render_pass(&rt_init, &rt_step1, step_material, encode_param(32));
@@ -189,7 +163,7 @@ void main() {
 "#;
 
 const FS_FINAL: &'static str = r#"#version 100
-precision highp float;
+precision lowp float;
 varying vec4 color;
 varying vec2 uv;
 uniform sampler2D Texture;
@@ -223,3 +197,41 @@ void main() {
     uv = texcoord;
 }
 ";
+
+fn draw_scene(n: i32) {
+    draw_text_ex(
+        &format!("{} frames rendered", n),
+        8.0,
+        8.0,
+        TextParams {
+            font_size: 18,
+            font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
+            font_scale_aspect: -1.0,
+            ..Default::default()
+        },
+    );
+    draw_text_ex(
+        "macroquad",
+        150.0,
+        220.0,
+        TextParams {
+            font_size: 120,
+            font_scale: -1.0, // macroquad renders text assuming that (0,0) is top left
+            font_scale_aspect: -1.0,
+            ..Default::default()
+        },
+    );
+    let n = n as f32;
+    for i in 3..9 {
+        let a = n * ((i + 7) as f32) / 512.;
+        let a2 = n * ((i + 11) as f32) / 300.;
+        draw_poly(
+            384.0 + a.cos() * 300.,
+            256.0 + a.sin() * 150.,
+            i,
+            60. + a2.cos() * 20.,
+            n as f32,
+            WHITE,
+        );
+    }
+}
