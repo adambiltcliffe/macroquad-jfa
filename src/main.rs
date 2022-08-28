@@ -5,7 +5,7 @@ const RENDER_H: f32 = 512.0;
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Platform tile physics test".to_owned(),
+        window_title: "Jump flood outline shader demo".to_owned(),
         fullscreen: false,
         window_width: RENDER_W as i32,
         window_height: RENDER_H as i32,
